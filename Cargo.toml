@@ -12,12 +12,8 @@ embedded-hal = "0.2.3"
 hifive1 = { path = "./hifive1", features = ["board-hifive1-revb"] }
 heapless = "0.5.5"
 panic-halt = "0.2.0"
-libesp-err-sys = { path = "../libesp-err-sys" }
 riscv = "0.5.3"
 riscv-rt = "0.6.0"
-riscv-rtfm = { path = "../riscv-rtfm" }
-riscv-rtfm-macros = { path = "../riscv-rtfm/macros" }
-riscv-semihosting = { path = "../riscv-semihosting" }
 rtfm-core = "0.2.0"
 
 # this lets you use `cargo fix`!
