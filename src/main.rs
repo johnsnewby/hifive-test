@@ -152,7 +152,7 @@ fn main() -> ! {
 
     // Configure SPI
     let pins = (mosi, miso, sck, cs);
-    let spi = Spi::new(p.QSPI1, pins, MODE_0, 79207.hz(), clocks);
+    let spi = Spi::new(p.QSPI1, pins, MODE_0, 80000.hz(), clocks);
 
     let handshake = gpio.pin10.into_floating_input();
     let mut wifi = EspWiFi {
@@ -172,23 +172,34 @@ fn main() -> ! {
     sprintln!("resp: {:?}", wifi.recv(&mut buffer));
 
     let mut buf = [0u8; 128];
+    let mut len: usize = 0;
     loop {
-        sprintln!("Waiting for input");
-        let len = hifive1::stdout::read(&mut buf);
-        if let Ok(command) = core::str::from_utf8(&buf[..len - 1]) {
-            sprintln!("Command: '{}'", command);
-            if command.len() == 0 {
-                continue;
-            }
-            wifi.send(command);
-            Delay.delay_ms(20u32);
-            for i in 0..50 {
-                match wifi.recv(&mut buffer) {
-                    Ok(x) => sprintln!("< {}", x),
-                    Err(e) => (),
+        let read = hifive1::stdout::read_noblock(&mut buf, &mut len);
+        if read > 0 {
+            if buf[len - 1] == b'\n' || buf[len - 1] == b'\r' {
+                // got a line!
+                len -= 1;
+                if len == 0 {
+                    continue;
                 }
-                Delay.delay_ms(20u32);
+                if buf[len - 1] == b'\r' {
+                    // remove any \r, a CRLF will be added in a bit
+                    len -= 1;
+                }
+                if let Ok(command) = core::str::from_utf8(&buf[..len]) {
+                    sprintln!("Command: '{}'", command);
+                    if command.len() == 0 {
+                        continue;
+                    }
+                    wifi.send(command);
+                    len = 0;
+                }
             }
+        }
+        match wifi.recv(&mut buffer) {
+            Ok(x) => sprintln!("< {}", x),
+            Err(EspError::WouldBlock) => (),
+            Err(e) => sprintln!("Err: {:?}", e),
         }
     }
 }
